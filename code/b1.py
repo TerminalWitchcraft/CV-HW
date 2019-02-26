@@ -37,7 +37,7 @@ def get_info(im):
     print("The width of the image is: ", im.width)
     print("The height of the image is: ", im.height)
 
-def histogram(im, mode=[0], gray=False):
+def histogram(im, mode=[0], gray=False, filename=None):
     """
     Returns the histogram for the given image and mode
     0 -> Red, 1-> Green, 2->Blue
@@ -72,9 +72,9 @@ def histogram(im, mode=[0], gray=False):
         )
     fig = go.Figure(data = traces, layout=layout)
     # trace = go.Histogram(x=band)
-    plotly.offline.plot(fig, auto_open=True, filename="hist_main" + ".html")
+    plotly.offline.plot(fig, auto_open=True, filename="hist_main" + filename + ".html")
 
-def normalize(grey_im, mode=[0], gray=True):
+def normalize(grey_im, mode=[0], gray=True, save_as=False):
     """
     Normalize the histogram according to Leibnitz rule
     """
@@ -102,7 +102,8 @@ def normalize(grey_im, mode=[0], gray=True):
     norm_im = ff(arr)
     print(norm_im)
     norm_im = Image.fromarray(norm_im.astype(np.uint8))
-    norm_im.show()
+    # norm_im.show()
+    if save_as: norm_im.save(save_as)
     return norm_im
 
 
@@ -205,8 +206,9 @@ def main(filename):
     # histogram(im, [0,1,2])
     grey_im = grayscale(im, save_as="grey.png")
     print(grey_im.getbands())
-    norm_im = normalize(grey_im)
-    histogram(norm_im, [0], gray=True)
+    histogram(grey_im, [0], gray=True, filename="grey")
+    norm_im = normalize(grey_im, save_as="norm.png")
+    histogram(norm_im, [0], gray=True, filename="norm")
     # cdf(im, mode=[0,1,2])
 
 if __name__ == "__main__":
