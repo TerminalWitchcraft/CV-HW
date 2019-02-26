@@ -75,6 +75,86 @@ def histogram(im, mode=[0], gray=False):
     plotly.offline.plot(fig, auto_open=True, filename="hist_main" + ".html")
 
 
+def pdf(im, mode=[0], gray=False):
+    """
+    Function to calculate pdf of the given image
+    Returns histogram / (width * height)
+    """
+    denom = im.width * im.height
+    traces = []
+    for key in mode:
+        band = np.array(im.getdata(key))
+        color = COLORMAP[-1] if gray else COLORMAP[key]
+        name = NAMEMAP[-1] if gray else NAMEMAP[key]
+        data = defaultdict(int)
+        for item in band:
+            data[item] += 1
+        x = []
+        y = []
+        for i in range(256):
+            x.append(i)
+            y.append(data[i] / denom)
+        trace = go.Bar(x=x, y=y, 
+                marker={"line": {"color": color}, "color": color},
+                name=name,
+                )
+        traces.append(trace)
+
+    layout = go.Layout(
+        title='Probability distribution funciton[Click on the legend to isolate traces]',
+        xaxis=dict(
+            title='Intensity Values (0-255)',
+            ),
+        yaxis=dict(
+            title='Number of Pixels',
+            )
+        )
+    fig = go.Figure(data = traces, layout=layout)
+    # trace = go.Histogram(x=band)
+    plotly.offline.plot(fig, auto_open=True, filename="pdf_main" + ".html")
+
+def cdf(im, mode=[0], gray=False):
+    """
+    Function to calculate cumulative distribution function from histogram
+    """
+    denom = im.width * im.height
+    traces = []
+    for key in mode:
+        print("\n New line")
+        band = np.array(im.getdata(key))
+        color = COLORMAP[-1] if gray else COLORMAP[key]
+        name = NAMEMAP[-1] if gray else NAMEMAP[key]
+        data = defaultdict(int)
+        for item in band:
+            data[item] += 1
+        x = []
+        y = []
+        for i in range(256):
+            x.append(i)
+            cumulative_sum = 0.0
+            for j in range(i+1):
+                cumulative_sum += data[j] / denom
+            print(cumulative_sum)
+            y.append(cumulative_sum)
+        trace = go.Bar(x=x, y=y, 
+                marker={"line": {"color": color}, "color": color},
+                name=name,
+                )
+        traces.append(trace)
+
+    layout = go.Layout(
+        title='Cumulative distribution funciton[Click on the legend to isolate traces]',
+        xaxis=dict(
+            title='Intensity Values (0-255)',
+            ),
+        yaxis=dict(
+            title='Number of Pixels',
+            )
+        )
+    fig = go.Figure(data = traces, layout=layout)
+    # trace = go.Histogram(x=band)
+    plotly.offline.plot(fig, auto_open=True, filename="cdf_main" + ".html")
+
 def grayscale(img, save_as=None):
     """
     Converts the given color image to grayscale
@@ -85,7 +165,6 @@ def grayscale(img, save_as=None):
     b_band = im2arr[:,:,2]
     l = 0.3 * r_band + 0.59 * g_band + 0.11 * b_band
     grey_im = Image.fromarray(l.astype(np.uint8))
-    print(l.shape)
     # grey_im.show()
     if save_as: grey_im.save(save_as)
     return grey_im
@@ -94,10 +173,11 @@ def grayscale(img, save_as=None):
 def main(filename):
     im = Image.open(filename)
     get_info(im)
-    # histogram(im, [0,1,2])
-    grey_im = grayscale(im, save_as="grey.png")
-    print(grey_im.getbands())
-    histogram(grey_im, [0], gray=True)
+    histogram(im, [0,1,2])
+    # grey_im = grayscale(im, save_as="grey.png")
+    # print(grey_im.getbands())
+    # histogram(grey_im, [0], gray=True)
+    cdf(im, mode=[0,1,2])
 
 if __name__ == "__main__":
     main("../b1.png")
