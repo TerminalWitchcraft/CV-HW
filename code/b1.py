@@ -74,6 +74,41 @@ def histogram(im, mode=[0], gray=False):
     # trace = go.Histogram(x=band)
     plotly.offline.plot(fig, auto_open=True, filename="hist_main" + ".html")
 
+def normalize(grey_im, mode=[0], gray=True):
+    """
+    Normalize the histogram according to Leibnitz rule
+    """
+    arr = np.array(grey_im)
+    g = np.zeros_like(arr)
+    denom = grey_im.width * grey_im.height
+    traces = []
+    for key in mode:
+        band = np.array(im.getdata(key))
+        color = COLORMAP[-1] if gray else COLORMAP[key]
+        name = NAMEMAP[-1] if gray else NAMEMAP[key]
+        data = defaultdict(int)
+        for item in band:
+            data[item] += 1
+        x = []
+        y = []
+        for i in range(256):
+            x.append(i)
+            cumulative_sum = 0.0
+            for j in range(i+1):
+                cumulative_sum += data[j] / denom
+            y.append(cumulative_sum)
+    min_y = np.nanmin(arr)
+    gf = np.vectorize(lambda x: x+1 if x > 0 else x)
+    arr2 = gf(arr)
+    vf = np.vectorize(lambda x:((y[x] - min_y) / (denom - min_y)) * np.nanmax(arr) )
+    out_im = vf(arr2)
+    print(out_im.shape, out_im.size, out_im)
+    round_im = np.round(out_im)
+    norm_im = Image.fromarray(round_im.astype(np.uint8))
+    norm_im.show()
+    # if save_as: grey_im.save(save_as)
+    return norm_im
+
 
 def pdf(im, mode=[0], gray=False):
     """
@@ -120,7 +155,6 @@ def cdf(im, mode=[0], gray=False):
     denom = im.width * im.height
     traces = []
     for key in mode:
-        print("\n New line")
         band = np.array(im.getdata(key))
         color = COLORMAP[-1] if gray else COLORMAP[key]
         name = NAMEMAP[-1] if gray else NAMEMAP[key]
@@ -134,7 +168,6 @@ def cdf(im, mode=[0], gray=False):
             cumulative_sum = 0.0
             for j in range(i+1):
                 cumulative_sum += data[j] / denom
-            print(cumulative_sum)
             y.append(cumulative_sum)
         trace = go.Bar(x=x, y=y, 
                 marker={"line": {"color": color}, "color": color},
@@ -173,11 +206,12 @@ def grayscale(img, save_as=None):
 def main(filename):
     im = Image.open(filename)
     get_info(im)
-    histogram(im, [0,1,2])
-    # grey_im = grayscale(im, save_as="grey.png")
-    # print(grey_im.getbands())
-    # histogram(grey_im, [0], gray=True)
-    cdf(im, mode=[0,1,2])
+    # histogram(im, [0,1,2])
+    grey_im = grayscale(im, save_as="grey.png")
+    print(grey_im.getbands())
+    norm_im = normalize(grey_im)
+    histogram(norm_im, [0], gray=True)
+    # cdf(im, mode=[0,1,2])
 
 if __name__ == "__main__":
     main("../b1.png")
