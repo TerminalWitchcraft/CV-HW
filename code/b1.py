@@ -6,10 +6,12 @@
 # Last Modified Date: 24.02.2019
 # Last Modified By  : Hitesh Paul <hp1293@gmail.com>
 
+import os
 import numpy as np
 import plotly
 import plotly.graph_objs as go
 import plotly.figure_factory as ff
+import plotly.io as pio
 from collections import defaultdict, Counter, OrderedDict
 from PIL import Image
 
@@ -37,16 +39,39 @@ def get_info(im):
     print("The width of the image is: ", im.width)
     print("The height of the image is: ", im.height)
 
-def histogram(im, mode=[0], gray=False, filename=None):
+def plot(data, filename, title, titlex, titley, modes,
+        auto_open=True, gray=False, save=False):
+    """
+    Function to plot data. data is an array of (x,y)
+    """
+    traces = []
+    for i in range(len(modes)):
+        color = COLORMAP[-1] if gray else COLORMAP[modes[i]]
+        name = NAMEMAP[-1] if gray else NAMEMAP[modes[i]]
+        trace = go.Bar(x=data[modes[i]][0], y=data[modes[i]][1],
+                marker={"line": {"color": color}, "color": color},
+                name=name)
+        traces.append(trace)
+
+    layout = go.Layout(title=title,
+            xaxis=dict(title=titlex),
+            yaxis=dict(title=titley))
+    fig = go.Figure(data=traces, layout=layout)
+    plotly.offline.plot(fig, auto_open=auto_open, filename=filename+".html")
+    if save:
+        if not os.path.exists("images"):
+            os.mkdir("images")
+        pio.write_image(fig, 'images/' + filename + ".jpeg", width=1366, height=768, scale=2)
+
+
+def histogram(im, mode=[0], denom=1, cummulate=False):
     """
     Returns the histogram for the given image and mode
     0 -> Red, 1-> Green, 2->Blue
     """
-    traces = []
+    ret_data = []
     for key in mode:
         band = np.array(im.getdata(key))
-        color = COLORMAP[-1] if gray else COLORMAP[key]
-        name = NAMEMAP[-1] if gray else NAMEMAP[key]
         data = defaultdict(int)
         for item in band:
             data[item] += 1
@@ -54,25 +79,15 @@ def histogram(im, mode=[0], gray=False, filename=None):
         y = []
         for i in range(256):
             x.append(i)
-            y.append(data[i])
-        trace = go.Bar(x=x, y=y, 
-                marker={"line": {"color": color}, "color": color},
-                name=name,
-                )
-        traces.append(trace)
-
-    layout = go.Layout(
-        title='Plot of distribution for channels[Click on the legend to isolate traces]',
-        xaxis=dict(
-            title='Intensity Values (0-255)',
-            ),
-        yaxis=dict(
-            title='Number of Pixels',
-            )
-        )
-    fig = go.Figure(data = traces, layout=layout)
-    # trace = go.Histogram(x=band)
-    plotly.offline.plot(fig, auto_open=True, filename="hist_main" + filename + ".html")
+            if cummulate:
+                cummulative_sum = 0
+                for j in range(i+1):
+                    cummulative_sum += data[j] / denom
+                y.append(cummulative_sum)
+            else:
+                y.append(data[i] / denom)
+        ret_data.append((x,y))
+    return ret_data
 
 def normalize(grey_im, mode=[0], gray=True, save_as=False):
     """
@@ -81,111 +96,37 @@ def normalize(grey_im, mode=[0], gray=True, save_as=False):
     arr = np.array(grey_im)
     g = np.zeros_like(arr)
     denom = grey_im.width * grey_im.height
-    traces = []
-    for key in mode:
-        band = np.array(im.getdata(key))
-        color = COLORMAP[-1] if gray else COLORMAP[key]
-        name = NAMEMAP[-1] if gray else NAMEMAP[key]
-        data = defaultdict(int)
-        for item in band:
-            data[item] += 1
-        x = []
-        y = []
-        for i in range(256):
-            x.append(i)
-            cumulative_sum = 0.0
-            for j in range(i+1):
-                cumulative_sum += data[j] / denom
-            y.append(cumulative_sum)
-    # if save_as: grey_im.save(save_as)
-    ff = np.vectorize(lambda x: np.nanmax(arr) * y[x])
-    norm_im = ff(arr)
-    print(norm_im)
+    data = histogram(grey_im, mode=mode, denom=1, cummulate=True)
+    y = data[0][1]
+    print(y)
+
+
+    # First method
+    vf = np.vectorize(lambda x: ((y[x] - np.nanmin(arr) ) / (denom - np.nanmin(arr))) * np.amax(arr) )
+    # ff = np.vectorize(lambda x: np.nanmax(arr) * y[x])
+    norm_im = vf(arr)
     norm_im = Image.fromarray(norm_im.astype(np.uint8))
-    # norm_im.show()
+    norm_im.show()
     if save_as: norm_im.save(save_as)
     return norm_im
 
 
-def pdf(im, mode=[0], gray=False):
+def pdf(im, mode=[0]):
     """
     Function to calculate pdf of the given image
     Returns histogram / (width * height)
     """
     denom = im.width * im.height
-    traces = []
-    for key in mode:
-        band = np.array(im.getdata(key))
-        color = COLORMAP[-1] if gray else COLORMAP[key]
-        name = NAMEMAP[-1] if gray else NAMEMAP[key]
-        data = defaultdict(int)
-        for item in band:
-            data[item] += 1
-        x = []
-        y = []
-        for i in range(256):
-            x.append(i)
-            y.append(data[i] / denom)
-        trace = go.Bar(x=x, y=y, 
-                marker={"line": {"color": color}, "color": color},
-                name=name,
-                )
-        traces.append(trace)
+    return histogram(im, mode, denom=denom)
 
-    layout = go.Layout(
-        title='Probability distribution funciton[Click on the legend to isolate traces]',
-        xaxis=dict(
-            title='Intensity Values (0-255)',
-            ),
-        yaxis=dict(
-            title='Number of Pixels',
-            )
-        )
-    fig = go.Figure(data = traces, layout=layout)
-    # trace = go.Histogram(x=band)
-    plotly.offline.plot(fig, auto_open=True, filename="pdf_main" + ".html")
-
-def cdf(im, mode=[0], gray=False):
+def cdf(im, mode=[0]):
     """
     Function to calculate cumulative distribution function from histogram
     """
     denom = im.width * im.height
-    traces = []
-    for key in mode:
-        band = np.array(im.getdata(key))
-        color = COLORMAP[-1] if gray else COLORMAP[key]
-        name = NAMEMAP[-1] if gray else NAMEMAP[key]
-        data = defaultdict(int)
-        for item in band:
-            data[item] += 1
-        x = []
-        y = []
-        for i in range(256):
-            x.append(i)
-            cumulative_sum = 0.0
-            for j in range(i+1):
-                cumulative_sum += data[j] / denom
-            y.append(cumulative_sum)
-        trace = go.Bar(x=x, y=y, 
-                marker={"line": {"color": color}, "color": color},
-                name=name,
-                )
-        traces.append(trace)
+    return histogram(im, mode, denom=denom, cummulate=True)
 
-    layout = go.Layout(
-        title='Cumulative distribution funciton[Click on the legend to isolate traces]',
-        xaxis=dict(
-            title='Intensity Values (0-255)',
-            ),
-        yaxis=dict(
-            title='Number of Pixels',
-            )
-        )
-    fig = go.Figure(data = traces, layout=layout)
-    # trace = go.Histogram(x=band)
-    plotly.offline.plot(fig, auto_open=True, filename="cdf_main" + ".html")
-
-def grayscale(img, save_as=None):
+def grayscale(img):
     """
     Converts the given color image to grayscale
     """
@@ -196,20 +137,93 @@ def grayscale(img, save_as=None):
     l = 0.3 * r_band + 0.59 * g_band + 0.11 * b_band
     grey_im = Image.fromarray(l.astype(np.uint8))
     # grey_im.show()
-    if save_as: grey_im.save(save_as)
     return grey_im
     
 
 def main(filename):
     im = Image.open(filename)
     get_info(im)
-    # histogram(im, [0,1,2])
-    grey_im = grayscale(im, save_as="grey.png")
-    print(grey_im.getbands())
-    histogram(grey_im, [0], gray=True, filename="grey")
-    norm_im = normalize(grey_im, save_as="norm.png")
-    histogram(norm_im, [0], gray=True, filename="norm")
-    # cdf(im, mode=[0,1,2])
+
+    # Part 1 of assignment
+    hist_data = histogram(im, [0,1,2])
+    plot(hist_data, filename=filename+"histogram_r", title="Plot of distribution for Red",
+            titlex="Intensity Values (0-255)",
+            titley="Number of Pixels",
+            modes=[0], auto_open=False, save=True)
+
+    plot(hist_data, filename=filename+"histogram_g", title="Plot of distribution for Green",
+            titlex="Intensity Values (0-255)",
+            titley="Number of Pixels",
+            modes=[1], auto_open=False, save=True)
+
+    plot(hist_data, filename=filename+"histogram_b", title="Plot of distribution for Blue",
+            titlex="Intensity Values (0-255)",
+            titley="Number of Pixels",
+            modes=[2], auto_open=False, save=True)
+
+    plot(hist_data, filename=filename+"histogram", title="Plot of distribution for channels[Click on the legend to isolate traces]",
+            titlex="Intensity Values (0-255)",
+            titley="Number of Pixels",
+            modes=[0,1,2], auto_open=False, save=True)
+
+    # Next, create Grayscale images
+    grey_im = grayscale(im)
+    hist_data_gray = histogram(grey_im, [0])
+    plot(hist_data_gray, filename=filename+"histogram_gray", title="Plot of distribution for Gray channel",
+            titlex="Intensity Values (0-255)",
+            titley="Number of Pixels",
+            modes=[0], auto_open=False, save=True, gray=True)
+
+    # Next, plot the pdf
+    pdf_grey = pdf(grey_im, [0])
+    plot(pdf_grey, filename=filename+"pdf_grey", title="Plot of probability distribution function",
+            titlex="Intensity Values (0-255)",
+            titley="Probability",
+            modes=[0], auto_open=False, save=True, gray=True)
+
+    # Plot the cdf
+    cdf_grey = cdf(grey_im, [0])
+    plot(cdf_grey, filename=filename+"cdf_grey", title="Plot of Cummulative distribution function",
+            titlex="Intensity Values (0-255)",
+            titley="Cummulative",
+            modes=[0], auto_open=False, save=True, gray=True)
+
+    # Plot the normalized histogram
+    grey_im.save("grey.jpeg")
+    norm_im = normalize(grey_im, save_as="norm.jpeg")
+    hist_grey_norm = histogram(grey_im)
+    plot(hist_grey_norm, filename=filename+"norm_hist_gray", title="Plot of Normalized cdf",
+            titlex="Intensity Values (0-255)",
+            titley="Cummulative",
+            modes=[0], auto_open=False, save=True, gray=True)
+
+
+def manual_threshold(im, threshold):
+    """
+    Manually set the threshold and return a new image
+    """
+    arr = np.array(im)
+    arr[arr > threshold] = 255
+    arr[arr <= threshold] = 0
+    print(arr)
+    return Image.fromarray(arr)
+
+    
+def threshold():
+    """
+    Second part of assignment
+    """
+    b2a = Image.open("../b2_a.png")
+    b2b = Image.open("../b2_b.png")
+    b2c = Image.open("../b2_c.png")
+    im1 = manual_threshold(b2a, 125)
+    im1.save("b2_at.png")
+    im2 = manual_threshold(b2b, 230)
+    im2.save("b2_bt.png")
+    im3 = manual_threshold(b2c, 125)
+    im3.save("b2_ct.png")
+
 
 if __name__ == "__main__":
-    main("../b1.png")
+    # main("../b1.png")
+    threshold()
