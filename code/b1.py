@@ -97,17 +97,11 @@ def normalize(grey_im, mode=[0], gray=True):
             for j in range(i+1):
                 cumulative_sum += data[j] / denom
             y.append(cumulative_sum)
-    min_y = np.nanmin(arr)
-    gf = np.vectorize(lambda x: x+1 if x > 0 else x)
-    arr2 = gf(arr)
-    vf = np.vectorize(lambda x:((y[x] - min_y) / (denom - min_y)) * np.nanmax(arr) )
-    out_im = vf(arr2)
-    print(out_im.shape, out_im.size, out_im)
-    round_im = np.round(out_im)
-    norm_im = Image.fromarray(round_im.astype(np.uint8))
     # if save_as: grey_im.save(save_as)
     ff = np.vectorize(lambda x: np.nanmax(arr) * y[x])
     norm_im = ff(arr)
+    print(norm_im)
+    norm_im = Image.fromarray(norm_im.astype(np.uint8))
     norm_im.show()
     return norm_im
 
