@@ -105,8 +105,10 @@ def normalize(grey_im, mode=[0], gray=True):
     print(out_im.shape, out_im.size, out_im)
     round_im = np.round(out_im)
     norm_im = Image.fromarray(round_im.astype(np.uint8))
-    norm_im.show()
     # if save_as: grey_im.save(save_as)
+    ff = np.vectorize(lambda x: np.nanmax(arr) * y[x])
+    norm_im = ff(arr)
+    norm_im.show()
     return norm_im
 
 
