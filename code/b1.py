@@ -7,6 +7,7 @@
 # Last Modified By  : Hitesh Paul <hp1293@gmail.com>
 
 import os
+import random
 import numpy as np
 import plotly
 import plotly.graph_objs as go
@@ -223,7 +224,95 @@ def threshold():
     im3 = manual_threshold(b2c, 125)
     im3.save("b2_ct.png")
 
+def otsu():
+    """
+    Second part of the assignment. Otsu's automatic threshold
+    detection algorithm
+    """
+    im = Image.open("../b2_a.png")
+    arr = np.array(im)
+    arr += 1
+    print(get_info(im))
+    print(arr.shape, arr.size)
+    hist_data = pdf(im)
+
+    # plot(hist_data, filename="b2_a", title="Plot of Histogram",
+    #         titlex="Intensity Values (0-255)",
+    #         titley="Number of pixels",
+    #         modes=[0], auto_open=False, save=False, gray=True)
+    hist_temp = {}
+    for key, value in zip(hist_data[0][0], hist_data[0][1]):
+        # print(key, value)
+        if value > 0:
+            hist_temp[key] = value
+
+    optim_k = 0
+    max_b = 0.0
+    # for k in range(0, 256):
+    #     # k = random.randint(0,255)
+    #     # print("Randomly initialized k is: ", k)
+    #     c0 = [x for x in range(k+1) if x in hist_temp]
+    #     c1 = [x for x in range(k+1, 256) if x in hist_temp]
+    #     if not c0 or not c1: continue
+    #     # print(c0)
+    #     # print(c1)
+    #     omega0 = omegak= sum([hist_temp[x] for x in c0])
+    #     omega1 = 1 - omega0
+    #     # print(omega0)
+    #     uk = sum([i*hist_temp[i] for i in c0])
+    #     ut = sum([i*hist_temp[i] for i in hist_temp]) 
+
+    #     u0 = uk / omegak
+    #     u1 = (ut-uk) / 1 - omega1
+    #     print("LHS: ", omega0*u0 + omega1*u1, " RHS: ", ut)
+    #     # print("RHS", ut)
+    #     var0 = sum([((i-u0) * (i-u0) * hist_temp[i]) / omega0 for i in c0])
+    #     var1 = sum([((i-u1) * (i-u1) * hist_temp[i]) / omega1 for i in c1])
+
+    #     varW = omega0 * var0 + omega1 * var1
+    #     varB = (omega0 * omega1) * ((u0 - u1) ** 2)
+    #     varB2 = ((ut * omegak - uk) ** 2) / omegak * (1-omegak)
+    #     # varT = sum([((i-ut)**2) * hist_temp[i] for i in range(256)])
+    for k in range(0, 256):
+        # k = random.randint(0,255)
+        # print("Randomly initialized k is: ", k)
+        c0 = [x for x in range(k+1) if x in hist_temp]
+        c1 = [x for x in range(k+1, 256) if x in hist_temp]
+        if not c0 or not c1: continue
+        # print(c0)
+        # print(c1)
+        omega0 = omegak= sum([hist_temp[x] for x in c0])
+        omega1 =  sum([hist_temp[x] for x in c1])
+        # print(omega0)
+        # uk = sum([i*hist_temp[i] for i in c0])
+
+        u0 = sum([i * hist_temp[i] for i in c0]) / omega0
+        u1 = sum([i * hist_temp[i] for i in c1]) / omega1
+        ut = sum([i*hist_temp[i] for i in hist_temp]) 
+        var = (omega0 * omega1) * ((u0-u1) * (u0-u1))
+        print("LHS: ", omega0*u0 + omega1*u1, " RHS: ", ut, " Var: ", var)
+        # print("RHS", ut)
+        # var0 = sum([((i-u0) * (i-u0) * hist_temp[i]) / omega0 for i in c0])
+        # var1 = sum([((i-u1) * (i-u1) * hist_temp[i]) / omega1 for i in c1])
+
+        # varW = omega0 * var0 + omega1 * var1
+        # varB = (omega0 * omega1) * ((u0 - u1) ** 2)
+        # varB2 = ((ut * omegak - uk) ** 2) / omegak * (1-omegak)
+        # varT = sum([((i-ut)**2) * hist_temp[i] for i in range(256)])
+        if var > max_b:
+            print("Current Maxb: ", max_b)
+            print("Greater")
+            max_b = var
+            print("Updated maxb", max_b)
+            optim_k = k
+    print("The best k is: ", optim_k)
+    im1 = manual_threshold(im, optim_k)
+    im1.show()
+        # print(varW + varB)
+        # print(varT)
+
 
 if __name__ == "__main__":
     # main("../b1.png")
-    threshold()
+    # threshold()
+    otsu()
