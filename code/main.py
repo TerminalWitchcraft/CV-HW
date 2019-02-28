@@ -3,7 +3,7 @@
 # File              : b1.py
 # Author            : Hitesh Paul <hp1293@gmail.com>
 # Date              : 24.02.2019
-# Last Modified Date: 24.02.2019
+# Last Modified Date: 28.02.2019
 # Last Modified By  : Hitesh Paul <hp1293@gmail.com>
 
 import os
@@ -44,6 +44,8 @@ def plot(data, filename, title, titlex, titley, modes,
     """
     Function to plot data. data is an array of (x,y)
     """
+    if not os.path.exists("html"):
+        os.mkdir("html")
     traces = []
     for i in range(len(modes)):
         color = COLORMAP[-1] if gray else COLORMAP[modes[i]]
@@ -57,11 +59,11 @@ def plot(data, filename, title, titlex, titley, modes,
             xaxis=dict(title=titlex),
             yaxis=dict(title=titley))
     fig = go.Figure(data=traces, layout=layout)
-    plotly.offline.plot(fig, auto_open=auto_open, filename=filename+".html")
+    plotly.offline.plot(fig, auto_open=auto_open, filename="html/" + filename+".html", image_filename="images/" + filename)
     if save:
-        if not os.path.exists("images"):
-            os.mkdir("images")
-        pio.write_image(fig, 'images/' + filename + ".jpeg", width=1366, height=768, scale=2)
+        if not os.path.exists("charts"):
+            os.mkdir("charts")
+        pio.write_image(fig, 'charts/' + filename + ".jpeg", width=1366, height=768, scale=2)
 
 
 def histogram(im, mode=[0], denom=1, cummulate=False):
@@ -89,12 +91,11 @@ def histogram(im, mode=[0], denom=1, cummulate=False):
         ret_data.append((x,y))
     return ret_data
 
-def normalize(grey_im, mode=[0], gray=True, save_as=False):
+def normalize(grey_im, mode=[0], gray=True):
     """
     Normalize the histogram according to Leibnitz rule
     """
     arr = np.array(grey_im)
-    g = np.zeros_like(arr)
     denom = grey_im.width * grey_im.height
     data = histogram(grey_im, mode=mode, denom=1, cummulate=True)
     y = data[0][1]
@@ -105,8 +106,7 @@ def normalize(grey_im, mode=[0], gray=True, save_as=False):
     # ff = np.vectorize(lambda x: np.nanmax(arr) * y[x])
     norm_im = vf(arr)
     norm_im = Image.fromarray(norm_im.astype(np.uint8))
-    norm_im.show()
-    if save_as: norm_im.save(save_as)
+    # norm_im.show()
     return norm_im
 
 
@@ -140,61 +140,71 @@ def grayscale(img):
     
 
 def main(filename):
+    if not os.path.exists("images"):
+        os.mkdir("images")
     im = Image.open(filename)
     get_info(im)
+    filename = filename[:len(filename)-4]
+    save = True
 
     # Part 1 of assignment
     hist_data = histogram(im, [0,1,2])
-    plot(hist_data, filename=filename+"histogram_r", title="Plot of distribution for Red",
+    plot(hist_data, filename=filename+"_hist_r", title="Plot of distribution for Red",
             titlex="Intensity Values (0-255)",
             titley="Number of Pixels",
-            modes=[0], auto_open=False, save=True)
+            modes=[0], auto_open=False, save=save)
 
-    plot(hist_data, filename=filename+"histogram_g", title="Plot of distribution for Green",
+    plot(hist_data, filename=filename+"_hist_g", title="Plot of distribution for Green",
             titlex="Intensity Values (0-255)",
             titley="Number of Pixels",
-            modes=[1], auto_open=False, save=True)
+            modes=[1], auto_open=False, save=save)
 
-    plot(hist_data, filename=filename+"histogram_b", title="Plot of distribution for Blue",
+    plot(hist_data, filename=filename+"_hist_b", title="Plot of distribution for Blue",
             titlex="Intensity Values (0-255)",
             titley="Number of Pixels",
-            modes=[2], auto_open=False, save=True)
+            modes=[2], auto_open=False, save=save)
 
-    plot(hist_data, filename=filename+"histogram", title="Plot of distribution for channels[Click on the legend to isolate traces]",
+    plot(hist_data, filename=filename+"_hist", title="Plot of distribution for channels[Click on the legend to isolate traces]",
             titlex="Intensity Values (0-255)",
             titley="Number of Pixels",
-            modes=[0,1,2], auto_open=False, save=True)
+            modes=[0,1,2], auto_open=False, save=save)
 
     # Next, create Grayscale images
     grey_im = grayscale(im)
+    grey_im.save("images/" + filename + "_grey.jpeg")
     hist_data_gray = histogram(grey_im, [0])
-    plot(hist_data_gray, filename=filename+"histogram_gray", title="Plot of distribution for Gray channel",
+    plot(hist_data_gray, filename=filename+"_hist_gray", title="Plot of distribution for Gray channel",
             titlex="Intensity Values (0-255)",
             titley="Number of Pixels",
-            modes=[0], auto_open=False, save=True, gray=True)
+            modes=[0], auto_open=False, save=save, gray=True)
 
     # Next, plot the pdf
     pdf_grey = pdf(grey_im, [0])
-    plot(pdf_grey, filename=filename+"pdf_grey", title="Plot of probability distribution function",
+    plot(pdf_grey, filename=filename+"_pdf_grey", title="Plot of probability distribution function",
             titlex="Intensity Values (0-255)",
             titley="Probability",
-            modes=[0], auto_open=False, save=True, gray=True)
+            modes=[0], auto_open=False, save=save, gray=True)
 
     # Plot the cdf
     cdf_grey = cdf(grey_im, [0])
-    plot(cdf_grey, filename=filename+"cdf_grey", title="Plot of Cummulative distribution function",
+    plot(cdf_grey, filename=filename+"_cdf_grey", title="Plot of Cummulative distribution function",
             titlex="Intensity Values (0-255)",
             titley="Cummulative",
-            modes=[0], auto_open=False, save=True, gray=True)
+            modes=[0], auto_open=False, save=save, gray=True)
 
     # Plot the normalized histogram
-    grey_im.save("grey.jpeg")
-    norm_im = normalize(grey_im, save_as="norm.jpeg")
-    hist_grey_norm = histogram(grey_im)
-    plot(hist_grey_norm, filename=filename+"norm_hist_gray", title="Plot of Normalized cdf",
+    norm_im = normalize(grey_im)
+    norm_im.save("images/" + filename + "_norm.jpeg")
+    hist_grey_norm = histogram(norm_im)
+    plot(hist_grey_norm, filename=filename+"_norm_hist_gray", title="Plot of Normalized histogram",
             titlex="Intensity Values (0-255)",
             titley="Cummulative",
-            modes=[0], auto_open=False, save=True, gray=True)
+            modes=[0], auto_open=False, save=save, gray=True)
+    cdf_grey_norm = cdf(norm_im, [0])
+    plot(cdf_grey_norm, filename=filename+"_norm_cdf_grey", title="Plot of Cummulative distribution function",
+            titlex="Intensity Values (0-255)",
+            titley="Cummulative",
+            modes=[0], auto_open=False, save=save, gray=True)
 
 
 def manual_threshold(im, threshold):
@@ -207,19 +217,15 @@ def manual_threshold(im, threshold):
     return Image.fromarray(arr)
 
     
-def threshold():
+def threshold(filenames, thresholds):
     """
     Second part of assignment
     """
-    b2a = Image.open("../b2_a.png")
-    b2b = Image.open("../b2_b.png")
-    b2c = Image.open("../b2_c.png")
-    im1 = manual_threshold(b2a, 125)
-    im1.save("b2_at.png")
-    im2 = manual_threshold(b2b, 230)
-    im2.save("b2_bt.png")
-    im3 = manual_threshold(b2c, 125)
-    im3.save("b2_ct.png")
+    for filename in filenames:
+        for item in thresholds:
+            im = Image.open(filename)
+            imt = manual_threshold(im, item)
+            imt.save("images/" + filename[:len(filename) -4 ] + "_t_{}.png".format(str(item)))
 
 def otsu(filenames):
     """
@@ -230,8 +236,6 @@ def otsu(filenames):
         im = Image.open(filename)
         arr = np.array(im)
         arr += 1
-        print(get_info(im))
-        print(arr.shape, arr.size)
         hist_data = pdf(im)
 
         # plot(hist_data, filename="b2_a", title="Plot of Histogram",
@@ -290,7 +294,7 @@ def otsu(filenames):
             u1 = sum([i * hist_temp[i] for i in c1]) / omega1
             ut = sum([i*hist_temp[i] for i in hist_temp]) 
             var = (omega0 * omega1) * ((u0-u1) * (u0-u1))
-            print("LHS: ", omega0*u0 + omega1*u1, " RHS: ", ut, " Var: ", var)
+            # print("LHS: ", omega0*u0 + omega1*u1, " RHS: ", ut, " Var: ", var)
             # print("RHS", ut)
             # var0 = sum([((i-u0) * (i-u0) * hist_temp[i]) / omega0 for i in c0])
             # var1 = sum([((i-u1) * (i-u1) * hist_temp[i]) / omega1 for i in c1])
@@ -302,23 +306,32 @@ def otsu(filenames):
             x.append(k)
             y.append(var)
             if var > max_b:
-                print("Current Maxb: ", max_b)
-                print("Greater")
                 max_b = var
-                print("Updated maxb", max_b)
                 optim_k = k
         print("The best k is: ", optim_k)
         im1 = manual_threshold(im, optim_k)
         # im1.show()
-        plot([(x,y)], filename=filename + "_otsu", title="Plot of variance with respect to intensity level",
+        im1.save("images/" + filename[: len(filename) - 4] + "_otsu.jpeg")
+        plot([(x,y)], filename=filename[: len(filename) - 4] + "_otsu", title="Plot of variance with respect to intensity level",
                 titlex="Intensity Values (0-255)",
                 titley="Variance",
-                modes=[0], auto_open=True, save=True, gray=True)
+                modes=[0], auto_open=False, save=True, gray=True)
             # print(varW + varB)
             # print(varT)
 
+def prepare():
+    """Prepare directories"""
+    import shutil
+    for item in ["images", "charts", "html"]:
+        try:
+            shutil.rmtree(item)
+        except:
+            pass
+
 
 if __name__ == "__main__":
-    # main("../b1.png")
-    # threshold()
-    otsu(["../b2_a.png", "../b2_b.png", "../b2_c.png"])
+    prepare()
+    files = ["b2_a.png", "b2_b.png", "b2_c.png"]
+    main("b1.png")
+    threshold(files, [80, 125, 230])
+    otsu(files)
