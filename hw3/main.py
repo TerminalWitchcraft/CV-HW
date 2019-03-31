@@ -125,6 +125,15 @@ def pattern_match(img_file, sub_img):
         for i in range(img_y - mask_y + 1):
             temp_data.append(np.sum(np.multiply(mask, img_arr[j: j+mask_x, i:i+mask_y])))
         new_arr.append(temp_data)
+    max_value = 0
+    max_x = 0
+    max_y = 0
+    for i, row in enumerate(new_arr):
+        for j, col in enumerate(row):
+            if col >  max_value:
+                max_x = j
+                max_y = i
+    print("The max coordinates are: ", max_x, max_y)
     new_arr = np.array(new_arr)
     print(new_arr.shape)
     new_arr = scale(new_arr, 0, 255)
