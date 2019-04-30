@@ -13,10 +13,21 @@ class Transform(object):
     def __init__(self, x, y):
         p = Point()
         self.point = p(x, y)
+        self.inverse = False
 
     @classmethod
     def init(cls, x, y):
         return cls(x,y)
+
+    def inverse(self):
+        self.inverse = True
+        return self
+
+    def get_multiplier(self, a):
+        if self.inverse:
+            return np.linalg.inv(a)
+        else:
+            return a
 
     def translate(self, x, y):
         a = np.array([
@@ -24,7 +35,7 @@ class Transform(object):
             [0, 1, y],
             [0, 0, 1]
             ], dtype=np.float32)
-        self.point = np.matmul(a, self.point)
+        self.point = np.matmul(self.get_multiplier(a), self.point)
         return self
 
     def rotate(self, theta):
@@ -34,7 +45,7 @@ class Transform(object):
             [np.sin(rads), np.cos(rads), 0],
             [0, 0, 1]
             ], dtype=np.float32)
-        self.point = np.matmul(a, self.point)
+        self.point = np.matmul(self.get_multiplier(a), self.point)
         return self
 
     def scale(self, x, y):
@@ -43,7 +54,7 @@ class Transform(object):
             [0, y, 0],
             [0, 0, 1]
             ], dtype=np.float32)
-        self.point = np.matmul(a, self.point)
+        self.point = np.matmul(self.get_multiplier(a), self.point)
         return self
 
     def get(self):
@@ -61,7 +72,7 @@ def main():
     # img.show()
     img_arr = np.array(img)
     a = Transform.init(1,1).scale(2,2).translate(-3, 5)
-    print(a.get())
+    print(a.get().I)
 
 if __name__ == "__main__":
     main()
