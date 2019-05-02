@@ -1,5 +1,9 @@
-from PIL import Image
+import cv2
+from PIL import Image, ImageDraw
+from matplotlib import pyplot as plt
 import numpy as np
+
+from grab import Grab
 
 class Point(object):
     def __init__(self):
@@ -67,12 +71,18 @@ class Transform(object):
         print("\n")
         print(self.point)
 
-def main():
+def partA():
+    a = Transform.init(1,1).scale(2,2).translate(-3, 5).rotate(90)
+    print(a.get())
+
+def partB():
     img = Image.open("./daoko.jpg")
-    # img.show()
-    img_arr = np.array(img)
-    a = Transform.init(1,1).scale(2,2).translate(-3, 5)
-    print(a.get().I)
+    img_copy = img.copy()
+    g = Grab(img_copy)
+    g.run()
+
+def main():
+    partB()
 
 if __name__ == "__main__":
     main()
