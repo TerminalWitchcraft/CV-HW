@@ -72,6 +72,10 @@ class Transform(object):
         print(self.point)
 
 def partA():
+    img = Image.open("./daoko.jpg")
+    img_arr = np.array(img)
+    for item in np.ndindex(img_arr.shape):
+        print(item)
     a = Transform.init(1,1).scale(2,2).translate(-3, 5).rotate(90)
     print(a.get())
 
@@ -82,7 +86,7 @@ def partB():
     g.run()
 
 def main():
-    partB()
+    partA()
 
 if __name__ == "__main__":
     main()
