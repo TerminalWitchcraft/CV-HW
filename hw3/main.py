@@ -15,39 +15,40 @@ class Point(object):
 
 class Transform(object):
 
-    def __init__(self, point):
+    def __init__(self, point, inverse=False):
         p = Point()
         self.point = p(point)
-        self.inverse = False
+        self.inverse = inverse
+        self.get_multiplier = lambda x: np.linalg.inv(x) if self.inverse else x
 
     @classmethod
-    def init(cls, point):
-        return cls(point)
+    def init(cls, point, inverse):
+        return cls(point, inverse)
 
     def inverse_on(self):
         self.inverse = True
         return self
 
-    def get_multiplier(self, a):
-        if self.inverse:
-            return np.linalg.inv(a)
-        else:
-            return a
-
     def translate(self, x, y):
         a = np.array([
+            [1, 0, x],
+            [0, 1, y],
+            [0, 0, 1]
+            ], dtype=np.float32) if not self.inverse else \
+        np.array([
             [1, 0, y],
             [0, 1, x],
             [0, 0, 1]
             ], dtype=np.float32)
+        # print(self.get_multiplier(a))
         self.point = np.matmul(self.get_multiplier(a), self.point)
         return self
 
     def rotate(self, theta):
         rads = theta * np.pi/180
         a = np.array([
-            [np.cos(rads), -np.sin(rads), 0],
-            [np.sin(rads), np.cos(rads), 0],
+            [np.cos(rads), np.sin(rads), 0],
+            [-np.sin(rads), np.cos(rads), 0],
             [0, 0, 1]
             ], dtype=np.float32)
         self.point = np.matmul(self.get_multiplier(a), self.point)
@@ -78,15 +79,13 @@ def partA():
     new_arr = np.zeros_like(img_arr)
     img.show()
     for index in np.ndindex(img_arr.shape[:2]):
-        a = Transform.init(index).translate(50,100).get_point()
-        # print(img_arr[index])
-        # print(new_arr[index])
-        try:
-            new_arr[a] = img_arr[index]
-        except:
-            pass
-        # print(new_arr[a])
-        pass
+        a = Transform.init(index, inverse=True).translate(20, 10).rotate(45).get_point()
+        x, y = a
+        if x >= 0. and y >= 0.:
+            try:
+                new_arr[index] = img_arr[a]
+            except:
+                pass
     img2 = Image.fromarray(new_arr)
     img2.show()
 
