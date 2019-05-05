@@ -65,6 +65,24 @@ class Transform(object):
         self.point = np.matmul(self.get_multiplier(a), self.point)
         return self
 
+    def shearX(self, x):
+        a = np.array([
+            [1, x, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+            ], dtype=np.float32)
+        self.point = np.matmul(self.get_multiplier(a), self.point)
+        return self
+
+    def shearY(self, y):
+        a = np.array([
+            [1, 0, 0],
+            [y, 1, 0],
+            [0, 0, 1]
+            ], dtype=np.float32)
+        self.point = np.matmul(self.get_multiplier(a), self.point)
+        return self
+
     def get(self):
         return tuple(self.point[:2])
 
@@ -90,9 +108,13 @@ class Transform(object):
 def bilinear(x, y, img_arr):
     x_low = math.floor(x)
     x_high = math.ceil(x)
+    if float(x_high) - x == 0. and int(x_high + 1) != img_arr.shape[0]:
+        x_high = x_high + 1
 
     y_low = math.floor(y)
     y_high = math.ceil(y)
+    if float(y_high) - y == 0. and int(y_high + 1) != img_arr.shape[1]:
+        y_high = y_high + 1
 
     int_r = 0.
     int_g = 0.
@@ -101,16 +123,12 @@ def bilinear(x, y, img_arr):
     final = []
     first = np.array([x_high - x, x-x_low], dtype=np.float32).reshape((1,2))
     third = np.array([y_high -y, y-y_low], dtype=np.float32).reshape((2,1))
-    print("\nThis is point: ", x, y)
     for i in range(3):
         second = np.array([
             [img_arr[x_low, y_low, i], img_arr[x_low, y_high, i]],
             [img_arr[x_high, y_low, i], img_arr[x_high, y_high, i]],
             ], dtype=np.float32).reshape((2,2))
         temp = np.matmul(first, second)
-        print("First: ", first)
-        print("Second: ", second)
-        print("Result: ", temp)
         temp = np.matmul(temp, third)
         final.append(float(temp[0]))
     return final
@@ -121,7 +139,7 @@ def partA():
     new_arr = np.zeros_like(img_arr)
     img.show()
     for index in np.ndindex(img_arr.shape[:2]):
-        a = Transform.init(index, inverse=True).translate(20, 10).rotate(45).get_point()
+        a = Transform.init(index, inverse=True).shearY(-0.5).get_point()
         x, y = a
         if x >= 0. and y >= 0.:
             try:
@@ -137,15 +155,14 @@ def partA2():
     img = Image.open("./daoko.jpg")
     img_arr = np.array(img)
     new_arr = np.zeros_like(img_arr)
-    img.show()
+    # img.show()
     for index in np.ndindex(img_arr.shape[:2]):
-        x, y = Transform.init(index, inverse=True).translate(20, 10).get_orig()
+        x, y = Transform.init(index, inverse=True).shearY(0.3).get_orig()
         if x >= 0. and y >= 0.:
             if x - math.floor(x) == 0. and y - math.floor(y) == 0.:
                 new_arr[index] = img_arr[int(x),int(y)]
             else:
                 intensity = bilinear(x, y, img_arr)
-                # print(intensity)
                 try:
                     new_arr[index] = intensity
                 except:
@@ -153,14 +170,128 @@ def partA2():
     img2 = Image.fromarray(new_arr)
     img2.show()
 
+def calculate_affine(points1, points2):
+    X = np.array([
+        [points1[0][0], points1[0][1], 1, 0, 0, 0],
+        [0, 0, 0, points1[0][0], points1[0][1], 1],
+        [points1[1][0], points1[1][1], 1, 0, 0, 0],
+        [0, 0, 0, points1[1][0], points1[1][1], 1],
+        [points1[2][0], points1[2][1], 1, 0, 0, 0],
+        [0, 0, 0, points1[2][0], points1[2][1], 1]
+        ], dtype=np.float32).reshape((6,6))
+    second = np.array([
+        points2[0][0],
+        points2[0][1],
+        points2[1][0],
+        points2[1][1],
+        points2[2][0],
+        points2[2][1]
+        ], dtype=np.float32).reshape((6,1))
+    a = np.matmul(np.linalg.inv(X), second)
+    return a
+
+def calculate_affine_unconstrained(points1, points2):
+    X = np.array([
+        [points1[0][0], points1[0][1], 1, 0, 0, 0],
+        [0, 0, 0, points1[0][0], points1[0][1], 1],
+        [points1[1][0], points1[1][1], 1, 0, 0, 0],
+        [0, 0, 0, points1[1][0], points1[1][1], 1],
+        [points1[2][0], points1[2][1], 1, 0, 0, 0],
+        [0, 0, 0, points1[2][0], points1[2][1], 1]
+        ], dtype=np.float32).reshape((6,6))
+    for i in range(3, len(points1)):
+        temp = np.array([
+            [points1[i][0], points1[i][1], 1, 0, 0, 0],
+            [0, 0, 0, points1[i][0], points1[i][1], 1],
+            ])
+        X = np.vstack((X, temp))
+
+    # print(X)
+    second = np.array([
+        points2[0][0],
+        points2[0][1],
+        points2[1][0],
+        points2[1][1],
+        points2[2][0],
+        points2[2][1]
+        ], dtype=np.float32).reshape((6,1))
+    for j in range(3, len(points2)):
+        second = np.vstack((second, np.array([points2[j][0]]).reshape((1,1)) ))
+        second = np.vstack((second, np.array([points2[j][1]]).reshape((1,1)) ))
+    # print("scon", second)
+    # a = np.matmul(np.linalg.inv(X), second)
+    a = np.linalg.lstsq(X, second)
+    return a[0]
+
 def partB():
-    img = Image.open("./daoko.jpg")
+    img = Image.open("./pic1.jpg")
     img_copy = img.copy()
     g = Grab(img_copy)
     g.run()
+    points1 = g.get_points()
+
+    img = Image.open("./pic2.jpg")
+    img_copy = img.copy()
+    g = Grab(img_copy)
+    g.run()
+    points2 = g.get_points()
+    a = calculate_affine(points1, points2)
+    a = np.array([
+        [a[0], a[1], a[2]],
+        [a[3], a[4], a[5]],
+        [0, 0, 1]
+        ], dtype=np.float32).reshape((3,3))
+    a = np.linalg.inv(a)
+
+    img1 = Image.open("./pic1.jpg") 
+    img1 = np.array(img1)
+    new_arr = np.zeros_like(img1)
+    for index in np.ndindex(img1.shape[:2]):
+        b = np.matmul(a, np.array([index[0], index[1], 1], dtype=np.float32).reshape((3,1)))
+        if b[0][0] >= 0. and b[1][0] >= 0.:
+            try:
+                new_arr[index] = img1[int(b[0][0]), int(b[1][0])] 
+            except:
+                pass
+    final_img = Image.fromarray(new_arr)
+    final_img.show()
+
+def partB2():
+    num_points = 5
+    img = Image.open("./pic1.jpg")
+    img_copy = img.copy()
+    g = Grab(img_copy, limit=num_points)
+    g.run()
+    points1 = g.get_points()
+
+    img = Image.open("./pic2.jpg")
+    img_copy = img.copy()
+    g = Grab(img_copy, limit=num_points)
+    g.run()
+    points2 = g.get_points()
+    a = calculate_affine_unconstrained(points1, points2)
+    a = np.array([
+        [a[0], a[1], a[2]],
+        [a[3], a[4], a[5]],
+        [0, 0, 1]
+        ], dtype=np.float32).reshape((3,3))
+    a = np.linalg.inv(a)
+
+    img1 = Image.open("./pic1.jpg") 
+    img1 = np.array(img1)
+    new_arr = np.zeros_like(img1)
+    for index in np.ndindex(img1.shape[:2]):
+        b = np.matmul(a, np.array([index[0], index[1], 1], dtype=np.float32).reshape((3,1)))
+        if b[0][0] >= 0. and b[1][0] >= 0.:
+            try:
+                new_arr[index] = img1[int(b[0][0]), int(b[1][0])] 
+            except:
+                pass
+    final_img = Image.fromarray(new_arr)
+    final_img.show()
 
 def main():
-    partA2()
+    partB2()
 
 if __name__ == "__main__":
     main()

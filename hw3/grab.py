@@ -2,7 +2,7 @@ from PIL import ImageDraw
 from matplotlib import pyplot as plt
 
 class Grab(object):
-    def __init__(self, img):
+    def __init__(self, img, limit=3):
         self.img = img
         self.points = []
         self.plt = plt
@@ -10,6 +10,7 @@ class Grab(object):
         self.exited = False
         self.plt.xticks([])
         self.plt.yticks([])
+        self.limit = limit
 
     def onClick(self, event):
         if event.xdata != None and event.ydata != None:
@@ -19,14 +20,14 @@ class Grab(object):
         self.plt.close()
 
     def validate_and_push(self, data):
-        if len(self.points) < 3:
+        if len(self.points) < self.limit:
             print("Coordinates of selected point: ", data)
             self.points.append(data)
-            if len(self.points) == 3:
+            if len(self.points) == self.limit:
                 self.plt.close()
                 self.exited = True
 
-        elif len(self.points) == 3:
+        elif len(self.points) == self.limit:
             self.plt.close()
             self.exited = True
         else:
@@ -74,7 +75,7 @@ class Grab(object):
         cid2 = fig.canvas.mpl_connect('key_press_event', self.onKeyPress)
         self.plt.show(block=False)
         try:
-            print("The window will be open for 60 seconds or until you select 3 points")
+            print("The window will be open for 60 seconds or until you select {} points".format(self.limit))
             self.plt.pause(60)
         except Exception:
             pass
